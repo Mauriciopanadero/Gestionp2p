@@ -112,125 +112,71 @@ const archivoCafeteria = {
 };
 
 async function cargarPedidos(){
-  try {
-    const { data, error } = await supabase.from("pedidos").select("*").order("fecha",{ascending:false});
-    if(error){ console.error("Supabase error:", error); container.innerHTML = "<p>Error al cargar pedidos. Revisa la consola.</p>"; return; }
-    container.innerHTML = "";
+  const { data, error } = await supabase.from("pedidos").select("*").order("fecha",{ascending:false});
+  if(error){ console.error(error); return; }
+  container.innerHTML = "";
 
-    const hoy = new Date();
-    for(let i=0;i<6;i++){
-      const fecha = new Date(hoy);
-      fecha.setDate(hoy.getDate()+i+offset);
-      const diaTexto = formatoDia(fecha);
+  const hoy = new Date();
+  for(let i=0;i<6;i++){
+    const fecha = new Date(hoy);
+    fecha.setDate(hoy.getDate()+i+offset);
+    const diaTexto = formatoDia(fecha);
 
-      const card = document.createElement("div");
-      card.className = "day-card";
-      card.textContent = diaTexto;
+    const card = document.createElement("div");
+    card.className = "day-card";
+    card.textContent = diaTexto;
 
-      const pedidosDia = data.filter(p=>{
-        // proteger si p.fecha no es válido
-        try { return new Date(p.fecha).toDateString() === fecha.toDateString(); }
-        catch(e){ return false; }
-      });
+    const pedidosDia = data.filter(p=>{
+      const fechaPedido = new Date(p.fecha);
+      return fechaPedido.toDateString() === fecha.toDateString();
+    });
 
-      if(pedidosDia.length>0){ card.classList.add("verde"); }
+    if(pedidosDia.length>0){ card.classList.add("verde"); }
 
-      card.onclick = () => {
-        modalBody.innerHTML = "";
-        if(pedidosDia.length === 0){
-          modalBody.innerHTML = "<p>No hay pedidos para este día.</p>";
-        } else {
-          pedidosDia.forEach(p => {
-            console.log("Pedido:", p); // depuración
-            const div = document.createElement("div");
-            div.innerHTML = `<h3>${p.cafeteria || "Sin nombre"}</h3>`;
+    card.onclick = () => {
+      modalBody.innerHTML = "";
+      if(pedidosDia.length === 0){
+        modalBody.innerHTML = "<p>No hay pedidos para este día.</p>";
+      } else {
+        pedidosDia.forEach(p=>{
+          const div = document.createElement("div");
+          div.innerHTML = `<h3>${p.cafeteria}</h3>`;
 
-            // Normalizar nombre para buscar archivo
-            function normalizar(s){ return s ? s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'') : ''; }
-            const archivoMap = {
-              "breck": "breck.html",
-              "amin": "amin.html",
-              "zuzu": "zuzu.html",
-              "ponke": "ponke.html",
-              "cafe del sur": "cafe-del-sur.html"
-            };
-            const clave = normalizar(p.cafeteria);
-            const archivo = archivoMap[clave];
-            if(archivo){
-              const abrir = document.createElement("a");
-              abrir.href = `Gestor2b2/${archivo}`; // <-- ajusta si tu carpeta tiene otro nombre exacto
-              abrir.target = "_blank";
-              abrir.rel = "noopener";
-              abrir.textContent = "Abrir página de la cafetería";
-              abrir.style.display = "inline-block";
-              abrir.style.margin = "8px 0";
-              div.appendChild(abrir);
-            } else {
-              const nota = document.createElement("p");
-              nota.textContent = `No se encontró página para "${p.cafeteria}" (normalizado: "${clave}")`;
-              nota.style.color = "#a00";
-              div.appendChild(nota);
-            }
+          // Crear enlace a la página de la cafetería dentro de la carpeta Gestor2b2
+          const nombre = (p.cafeteria || "").trim();
+          const archivo = archivoCafeteria[nombre];
+          if(archivo){
+            const abrir = document.createElement("a");
+            abrir.href = `Gestor2b2/${archivo}`; // <-- ruta relativa a la carpeta Gestionp2p en la raíz del repo
+            abrir.target = "_blank";
+            abrir.rel = "noopener";
+            abrir.textContent = "Abrir página de la cafetería";
+            abrir.style.display = "inline-block";
+            abrir.style.margin = "8px 0";
+            div.appendChild(abrir);
+          } else {
+            const nota = document.createElement("p");
+            nota.textContent = "No se encontró página para esta cafetería.";
+            div.appendChild(nota);
+          }
 
-            const lista = document.createElement("ul");
-
-            // Manejo defensivo de p.dias
-            const dias = p.dias || {};
-            // Si dias es un array (caso raro), lo convertimos a objeto con clave "Sin dia"
-            if (Array.isArray(dias)) {
-              diasTemp = { "Sin dia": dias };
-            }
-
-            Object.keys(dias).forEach(diaKey => {
-              const valor = dias[diaKey];
-
-              // Caso A: valor es array de items
-              if (Array.isArray(valor)) {
-                valor.forEach(item => {
-                  const li = document.createElement("li");
-                  li.textContent = `${diaKey} — ${item.producto ?? '—'} — ${item.cantidad ?? 0}`;
-                  lista.appendChild(li);
-                });
-              }
-              // Caso B: valor es objeto (por sucursales)
-              else if (valor && typeof valor === "object") {
-                Object.keys(valor).forEach(sucursal => {
-                  const arr = valor[sucursal];
-                  if (Array.isArray(arr)) {
-                    arr.forEach(item => {
-                      const li = document.createElement("li");
-                      li.textContent = `${diaKey} / ${sucursal} — ${item.producto ?? '—'} — ${item.cantidad ?? 0}`;
-                      lista.appendChild(li);
-                    });
-                  } else {
-                    const li = document.createElement("li");
-                    li.textContent = `${diaKey} / ${sucursal} — formato inesperado`;
-                    lista.appendChild(li);
-                    console.warn("Sucursal no es array:", diaKey, sucursal, arr);
-                  }
-                });
-              }
-              // Caso C: formato inesperado
-              else {
-                const li = document.createElement("li");
-                li.textContent = `${diaKey} — formato inesperado: ${String(valor)}`;
-                lista.appendChild(li);
-                console.warn("Formato inesperado en p.dias:", diaKey, valor);
-              }
+          const lista = document.createElement("ul");
+          // Si p.dias es un objeto con arrays, iteramos; ajusta si tu estructura es distinta
+          Object.values(p.dias || {}).forEach(arr=>{
+            arr.forEach(item=>{
+              const li = document.createElement("li");
+              li.textContent = `${item.producto} — ${item.cantidad}`;
+              lista.appendChild(li);
             });
-
-            div.appendChild(lista);
-            modalBody.appendChild(div);
           });
-        }
-        modal.style.display = "flex";
-      };
+          div.appendChild(lista);
+          modalBody.appendChild(div);
+        });
+      }
+      modal.style.display = "flex";
+    };
 
-      container.appendChild(card);
-    }
-  } catch (err) {
-    console.error("Error en cargarPedidos:", err);
-    container.innerHTML = "<p>Error inesperado al cargar pedidos. Revisa la consola.</p>";
+    container.appendChild(card);
   }
 }
 
