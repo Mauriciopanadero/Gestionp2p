@@ -11,15 +11,19 @@ body{ font-family:Arial, sans-serif; margin:0; padding:16px; background:var(--bg
 h1{ color:var(--accent); margin:0 0 12px; font-size:20px; text-align:center; }
 .container{ max-width:980px; margin:0 auto; }
 .card{ background:var(--card); border-radius:10px; padding:12px; margin-bottom:12px; border:1px solid #eaeaea; box-shadow:0 6px 18px rgba(0,0,0,0.04); }
-.header{ font-weight:700; background:var(--accent); color:#fff; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+.header{ font-weight:700; background:var(--accent); color:#fff; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
 .product-row{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .product-row span{ flex:1; font-size:15px; }
 .suc-inputs{ display:flex; gap:8px; align-items:center; }
 .suc-col{ display:flex; flex-direction:column; align-items:flex-end; min-width:84px; }
 .suc-col label{ font-size:12px; color:var(--muted); margin-bottom:4px; }
 input[type="number"]{ width:72px; padding:8px; border-radius:8px; border:1px solid #ccc; font-size:15px; text-align:right; }
+input::placeholder{ color:#bbb; }
 #enviar{ width:100%; padding:12px; border-radius:10px; border:none; background:var(--ok); color:#fff; font-size:16px; cursor:pointer; margin-top:8px; }
 #status{ margin-top:8px; font-size:14px; text-align:center; color:#333; }
+
+/* listas colapsables */
+.day-list{ display:none; overflow:hidden; transition:max-height .18s ease; max-height:0; }
 
 /* Responsive */
 @media (max-width:720px){
@@ -34,7 +38,7 @@ input[type="number"]{ width:72px; padding:8px; border-radius:8px; border:1px sol
 <div class="container">
   <h1>Breck</h1>
   <div class="card">
-    <div class="header">Semana actual — pedidos por día</div>
+    <div class="header" data-toggle="week-summary">Semana actual — pedidos por día</div>
     <div id="dias-container"></div>
     <button id="enviar">Enviar Pedido</button>
     <div id="status" aria-live="polite"></div>
@@ -52,7 +56,7 @@ const SUCURSALES = ["Bistro","Cafe"];
 const container = document.getElementById('dias-container');
 const statusEl = document.getElementById('status');
 
-/* Construir UI */
+/* Construir UI con listas colapsadas y inputs vacíos */
 (function buildUI(){
   const hoy = new Date();
   const diaSemana = hoy.getDay();
@@ -64,52 +68,67 @@ const statusEl = document.getElementById('status');
     card.className = 'card';
 
     const header = document.createElement('div');
-    header.className = 'header';
+    header.className = 'header day-header';
     const fechaDia = new Date(lunes); fechaDia.setDate(lunes.getDate() + idx);
     const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
     header.textContent = `${dia} — ${fechaDia.toLocaleDateString('es-ES', opciones)}`;
+    header.setAttribute('role','button');
+    header.setAttribute('aria-expanded','false');
 
     const list = document.createElement('div');
+    list.className = 'day-list';
     list.style.marginTop = '8px';
 
-/* Construir UI: inputs vacíos por defecto */
-PRODUCTOS.forEach(prod => {
-  const row = document.createElement('div');
-  row.className = 'product-row';
+    PRODUCTOS.forEach(prod => {
+      const row = document.createElement('div');
+      row.className = 'product-row';
 
-  const span = document.createElement('span');
-  span.textContent = prod;
+      const span = document.createElement('span');
+      span.textContent = prod;
 
-  const sucInputs = document.createElement('div');
-  sucInputs.className = 'suc-inputs';
+      const sucInputs = document.createElement('div');
+      sucInputs.className = 'suc-inputs';
 
-  SUCURSALES.forEach(suc => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'suc-col';
+      SUCURSALES.forEach(suc => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'suc-col';
 
-    const label = document.createElement('label');
-    label.textContent = suc;
+        const label = document.createElement('label');
+        label.textContent = suc;
 
-    const inp = document.createElement('input');
-    inp.type = 'number';
-    inp.min = 0;
-    inp.value = '';                    // <-- vacío por defecto
-    inp.placeholder = '0';             // muestra 0 como pista visual
-    inp.dataset.producto = prod;
-    inp.dataset.dia = dia;
-    inp.dataset.sucursal = suc;
-    inp.setAttribute('inputmode','numeric');
-    inp.setAttribute('pattern','[0-9]*');
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.min = 0;
+        inp.value = '';                    // vacío por defecto
+        inp.placeholder = '0';
+        inp.dataset.producto = prod;
+        inp.dataset.dia = dia;
+        inp.dataset.sucursal = suc;
+        inp.setAttribute('inputmode','numeric');
+        inp.setAttribute('pattern','[0-9]*');
 
-    wrapper.appendChild(label);
-    wrapper.appendChild(inp);
-    sucInputs.appendChild(wrapper);
-  });
+        wrapper.appendChild(label);
+        wrapper.appendChild(inp);
+        sucInputs.appendChild(wrapper);
+      });
 
-  row.appendChild(span);
-  row.appendChild(sucInputs);
-  list.appendChild(row);
-});
+      row.appendChild(span);
+      row.appendChild(sucInputs);
+      list.appendChild(row);
+    });
+
+    header.addEventListener('click', () => {
+      const expanded = header.getAttribute('aria-expanded') === 'true';
+      if (expanded) {
+        list.style.maxHeight = null;
+        setTimeout(()=> list.style.display = 'none', 180);
+        header.setAttribute('aria-expanded','false');
+      } else {
+        list.style.display = 'block';
+        list.style.maxHeight = list.scrollHeight + 'px';
+        header.setAttribute('aria-expanded','true');
+      }
+    });
 
     card.appendChild(header);
     card.appendChild(list);
@@ -117,8 +136,16 @@ PRODUCTOS.forEach(prod => {
   });
 })();
 
-/* Enviar pedido */
-/* Enviar pedido: interpretar campos vacíos como 0 y limpiar inputs al finalizar */
+/* Asegurar que todas las listas estén colapsadas al cargar */
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.day-list').forEach(list => {
+    list.style.display = 'none';
+    list.style.maxHeight = null;
+  });
+  document.querySelectorAll('.day-header').forEach(h => h.setAttribute('aria-expanded','false'));
+});
+
+/* Enviar pedido: interpretar campos vacíos como 0 y limpiar inputs */
 document.getElementById('enviar').onclick = async () => {
   statusEl.textContent = '';
   const pedidoDias = {};
@@ -128,9 +155,8 @@ document.getElementById('enviar').onclick = async () => {
     const suc = inp.dataset.sucursal;
     const prod = inp.dataset.producto;
     const raw = (inp.value ?? '').toString().trim();
-    const cant = raw === '' ? 0 : Number(raw); // '' -> 0, sino Number()
-    if (cant <= 0) return; // ignorar ceros y vacíos
-
+    const cant = raw === '' ? 0 : Number(raw);
+    if (cant <= 0) return;
     if (!pedidoDias[dia]) pedidoDias[dia] = {};
     if (!pedidoDias[dia][suc]) pedidoDias[dia][suc] = [];
     pedidoDias[dia][suc].push({ producto: prod, cantidad: cant });
@@ -160,7 +186,6 @@ document.getElementById('enviar').onclick = async () => {
 
     if (res.ok) {
       statusEl.textContent = "Pedido enviado correctamente.";
-      // limpiar inputs: dejarlos vacíos otra vez
       document.querySelectorAll('input[type="number"]').forEach(i => i.value = '');
     } else {
       const text = await res.text();
@@ -172,7 +197,6 @@ document.getElementById('enviar').onclick = async () => {
     console.error(err);
   }
 };
-
 </script>
 </body>
 </html>
