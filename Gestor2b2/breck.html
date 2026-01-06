@@ -72,42 +72,44 @@ const statusEl = document.getElementById('status');
     const list = document.createElement('div');
     list.style.marginTop = '8px';
 
-    PRODUCTOS.forEach(prod => {
-      const row = document.createElement('div');
-      row.className = 'product-row';
+/* Construir UI: inputs vacíos por defecto */
+PRODUCTOS.forEach(prod => {
+  const row = document.createElement('div');
+  row.className = 'product-row';
 
-      const span = document.createElement('span');
-      span.textContent = prod;
+  const span = document.createElement('span');
+  span.textContent = prod;
 
-      const sucInputs = document.createElement('div');
-      sucInputs.className = 'suc-inputs';
+  const sucInputs = document.createElement('div');
+  sucInputs.className = 'suc-inputs';
 
-      SUCURSALES.forEach(suc => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'suc-col';
+  SUCURSALES.forEach(suc => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'suc-col';
 
-        const label = document.createElement('label');
-        label.textContent = suc;
+    const label = document.createElement('label');
+    label.textContent = suc;
 
-        const inp = document.createElement('input');
-        inp.type = 'number';
-        inp.min = 0;
-        inp.value = 0;
-        inp.dataset.producto = prod;
-        inp.dataset.dia = dia;
-        inp.dataset.sucursal = suc;
-        inp.setAttribute('inputmode','numeric');
-        inp.setAttribute('pattern','[0-9]*');
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.min = 0;
+    inp.value = '';                    // <-- vacío por defecto
+    inp.placeholder = '0';             // muestra 0 como pista visual
+    inp.dataset.producto = prod;
+    inp.dataset.dia = dia;
+    inp.dataset.sucursal = suc;
+    inp.setAttribute('inputmode','numeric');
+    inp.setAttribute('pattern','[0-9]*');
 
-        wrapper.appendChild(label);
-        wrapper.appendChild(inp);
-        sucInputs.appendChild(wrapper);
-      });
+    wrapper.appendChild(label);
+    wrapper.appendChild(inp);
+    sucInputs.appendChild(wrapper);
+  });
 
-      row.appendChild(span);
-      row.appendChild(sucInputs);
-      list.appendChild(row);
-    });
+  row.appendChild(span);
+  row.appendChild(sucInputs);
+  list.appendChild(row);
+});
 
     card.appendChild(header);
     card.appendChild(list);
@@ -116,6 +118,7 @@ const statusEl = document.getElementById('status');
 })();
 
 /* Enviar pedido */
+/* Enviar pedido: interpretar campos vacíos como 0 y limpiar inputs al finalizar */
 document.getElementById('enviar').onclick = async () => {
   statusEl.textContent = '';
   const pedidoDias = {};
@@ -124,8 +127,10 @@ document.getElementById('enviar').onclick = async () => {
     const dia = inp.dataset.dia;
     const suc = inp.dataset.sucursal;
     const prod = inp.dataset.producto;
-    const cant = Number(inp.value) || 0;
-    if (cant <= 0) return;
+    const raw = (inp.value ?? '').toString().trim();
+    const cant = raw === '' ? 0 : Number(raw); // '' -> 0, sino Number()
+    if (cant <= 0) return; // ignorar ceros y vacíos
+
     if (!pedidoDias[dia]) pedidoDias[dia] = {};
     if (!pedidoDias[dia][suc]) pedidoDias[dia][suc] = [];
     pedidoDias[dia][suc].push({ producto: prod, cantidad: cant });
@@ -155,7 +160,8 @@ document.getElementById('enviar').onclick = async () => {
 
     if (res.ok) {
       statusEl.textContent = "Pedido enviado correctamente.";
-      document.querySelectorAll('input[type="number"]').forEach(i => i.value = 0);
+      // limpiar inputs: dejarlos vacíos otra vez
+      document.querySelectorAll('input[type="number"]').forEach(i => i.value = '');
     } else {
       const text = await res.text();
       statusEl.textContent = "Error al enviar pedido: " + text;
@@ -166,6 +172,7 @@ document.getElementById('enviar').onclick = async () => {
     console.error(err);
   }
 };
+
 </script>
 </body>
 </html>
