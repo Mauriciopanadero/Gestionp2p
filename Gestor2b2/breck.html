@@ -5,37 +5,50 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Breck</title>
 <style>
-#dias-container > div {
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  margin-bottom: 12px;
-  background: #fff;
-  overflow: hidden;
-}
-
-#dias-container > div > div:first-child {
-  padding: 14px;
-  font-size: 22px;
-  font-weight: bold;
-  background: #2c3e50;
-  color: #fff;
-  cursor: pointer;
-}
-
-#dias-container > div > div:last-child {
-  display: none;
-  padding: 12px;
-}
-
-#dias-container > div > div:last-child > div {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-input {
-  width: 60px;
-}
+  body { font-family: Arial, sans-serif; padding:20px; background:#f5f5f5; }
+  h1 { color:#2c3e50; margin-bottom:12px; }
+  #dias-container > div {
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    background: #fff;
+    overflow: hidden;
+  }
+  #dias-container > div > div:first-child {
+    padding: 14px;
+    font-size: 18px;
+    font-weight: bold;
+    background: #2c3e50;
+    color: #fff;
+    cursor: pointer;
+  }
+  #dias-container > div > div:last-child {
+    display: none;
+    padding: 12px;
+  }
+  .producto-row {
+    display:flex;
+    gap:12px;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:8px;
+  }
+  .producto-row span { flex:1; }
+  .suc-inputs { display:flex; gap:8px; align-items:center; }
+  .suc-inputs label { font-size:13px; margin-right:4px; }
+  input[type="number"] { width:70px; padding:6px; border-radius:6px; border:1px solid #ccc; }
+  #enviar {
+    margin-top:12px;
+    padding:10px 16px;
+    background:#27ae60;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:16px;
+  }
+  #status { margin-top:10px; font-size:14px; color:#333; }
+  .small { font-size:13px; color:#666; margin-top:6px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
@@ -43,79 +56,158 @@ input {
 <h1>Breck</h1>
 <div id="dias-container"></div>
 <button id="enviar">Enviar Pedido</button>
+<div id="status" aria-live="polite"></div>
+<div class="small">Sucursales: <strong>Bistro</strong> y <strong>Cafe</strong></div>
 
 <script>
+/* CONFIG */
 const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcGh6ZG9kcGFzc29tZ2d0aGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1ODMxMTIsImV4cCI6MjA4MzE1OTExMn0.mQNeavAOItO-wTgfGVac-z91baYxsa6866HpBOZy3nM";
 const NOMBRE_CAFETERIA = "Breck";
 const PRODUCTOS = ["Croissant","Chocolatín","Hogaza","Foccacia","Brioche","Croissant Almendra","Chocolatín Almendra","Galleta Chispas","Galleta Avena","Galleta Red Velvet"];
 const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-const SUCURSAL = ["Bistro","Cafe"]
+const SUCURSALES = ["Bistro","Cafe"];
 const container = document.getElementById('dias-container');
-DIAS.forEach(dia=>{
-  const card=document.createElement('div');
-  const header=document.createElement('div');
- const hoy = new Date();
+const statusEl = document.getElementById('status');
 
-// calcular lunes de la semana actual
-const diaSemana = hoy.getDay(); // 0 domingo, 1 lunes...
-const diffLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
-const lunes = new Date(hoy);
-lunes.setDate(hoy.getDate() + diffLunes);
+/* Construir tarjetas por día con inputs por sucursal */
+(function buildUI(){
+  const hoy = new Date();
 
-// fecha fija según el índice del array DIAS
-const fechaDia = new Date(lunes);
-fechaDia.setDate(lunes.getDate() + DIAS.indexOf(dia));
+  // calcular lunes de la semana actual
+  const diaSemana = hoy.getDay(); // 0 domingo, 1 lunes...
+  const diffLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+  const lunes = new Date(hoy);
+  lunes.setDate(hoy.getDate() + diffLunes);
 
-const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
-header.textContent = fechaDia.toLocaleDateString('es-ES', opciones);
-  header.onclick = () => {
-  list.style.display = list.style.display === 'none' ? 'block' : 'none';
-  };
-  const list=document.createElement('div');
-  PRODUCTOS.forEach(prod=>{
-    const item=document.createElement('div');
-    const span=document.createElement('span'); span.textContent=prod;
-    const inp=document.createElement('input'); inp.type='number'; inp.min=0; inp.value=0;
-    inp.dataset.producto=prod; inp.dataset.dia=dia;
-    item.appendChild(span); item.appendChild(inp);
-    list.appendChild(item);
-  });
-  card.appendChild(header); card.appendChild(list);
-  container.appendChild(card);
-});
+  DIAS.forEach((dia, idx) => {
+    const card = document.createElement('div');
 
-document.getElementById('enviar').onclick=async()=>{
-  const pedidoDias={};
-  document.querySelectorAll('input').forEach(inp=>{
-    const val=parseInt(inp.value)||0;
-    if(val>0){
-      if(!pedidoDias[inp.dataset.dia]) pedidoDias[inp.dataset.dia]=[];
-      pedidoDias[inp.dataset.dia].push({producto:inp.dataset.producto,cantidad:val});
-    }
-  });
-  if(Object.keys(pedidoDias).length===0){ alert("No hay cantidades"); return; }
+    const header = document.createElement('div');
+    const fechaDia = new Date(lunes);
+    fechaDia.setDate(lunes.getDate() + idx);
+    const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
+    header.textContent = `${dia} — ${fechaDia.toLocaleDateString('es-ES', opciones)}`;
+    header.setAttribute('role','button');
+    header.style.userSelect = 'none';
 
-  const pedido={
-    cafeteria:NOMBRE_CAFETERIA,
-    fecha:new Date().toISOString(),
-    dias:pedidoDias,
-    imagenData:"", // opcional si no quieres capturas
-    imagenArchivo:`pedido_${Date.now()}.png`
-  };
+    const list = document.createElement('div');
 
-  try {
-    const res = await fetch("https://pqphzdodpassomggthid.supabase.co/rest/v1/pedidos", {
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "apikey":API_KEY,
-        "Authorization":`Bearer ${API_KEY}`
-      },
-      body:JSON.stringify(pedido)
+    // por cada producto, crear fila con inputs para cada sucursal
+    PRODUCTOS.forEach(prod => {
+      const row = document.createElement('div');
+      row.className = 'producto-row';
+
+      const span = document.createElement('span');
+      span.textContent = prod;
+
+      const sucInputs = document.createElement('div');
+      sucInputs.className = 'suc-inputs';
+
+      SUCURSALES.forEach(suc => {
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.flexDirection = 'column';
+        wrapper.style.alignItems = 'flex-end';
+
+        const label = document.createElement('label');
+        label.textContent = suc;
+        label.style.fontSize = '12px';
+        label.style.color = '#444';
+
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.min = 0;
+        inp.value = 0;
+        inp.dataset.producto = prod;
+        inp.dataset.dia = dia;
+        inp.dataset.sucursal = suc;
+
+        wrapper.appendChild(label);
+        wrapper.appendChild(inp);
+        sucInputs.appendChild(wrapper);
+      });
+
+      row.appendChild(span);
+      row.appendChild(sucInputs);
+      list.appendChild(row);
     });
-    if(res.ok){ alert("Pedido enviado correctamente"); }
-    else { alert("Error al enviar pedido: "+await res.text()); }
-  } catch(err){ alert("Error de conexión: "+err); }
+
+    header.onclick = () => {
+      list.style.display = list.style.display === 'none' ? 'block' : 'none';
+    };
+
+    // por defecto oculto
+    list.style.display = 'none';
+
+    card.appendChild(header);
+    card.appendChild(list);
+    container.appendChild(card);
+  });
+})();
+
+/* Construir objeto pedido y enviarlo */
+document.getElementById('enviar').onclick = async () => {
+  statusEl.textContent = '';
+  // Estructura: dias = { "Lunes": { "Bistro":[{producto,cantidad}], "Cafe":[...] }, ... }
+  const pedidoDias = {};
+
+  // recorrer todos los inputs
+  const inputs = document.querySelectorAll('input[type="number"]');
+  inputs.forEach(inp => {
+    const dia = inp.dataset.dia;
+    const suc = inp.dataset.sucursal;
+    const prod = inp.dataset.producto;
+    const cant = Number(inp.value) || 0;
+    if (cant <= 0) return; // ignorar ceros
+
+    if (!pedidoDias[dia]) pedidoDias[dia] = {};
+    if (!pedidoDias[dia][suc]) pedidoDias[dia][suc] = [];
+    pedidoDias[dia][suc].push({ producto: prod, cantidad: cant });
+  });
+
+  if (Object.keys(pedidoDias).length === 0) {
+    alert("No hay cantidades para enviar.");
+    return;
+  }
+
+  // Opcional: generar captura de la tabla (comentado por defecto)
+  // const canvas = await html2canvas(container);
+  // const imagenData = canvas.toDataURL("image/png");
+
+  const pedido = {
+    cafeteria: NOMBRE_CAFETERIA,
+    fecha: new Date().toISOString(),
+    dias: pedidoDias,
+    imagenData: "", // si quieres la captura, pon imagenData
+    imagenArchivo: `pedido_${Date.now()}.png`
+  };
+
+  // Enviar a Supabase REST
+  try {
+    statusEl.textContent = "Enviando pedido...";
+    const res = await fetch("https://pqphzdodpassomggthid.supabase.co/rest/v1/pedidos", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": API_KEY,
+        "Authorization": `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify(pedido)
+    });
+
+    if (res.ok) {
+      statusEl.textContent = "Pedido enviado correctamente.";
+      // opcional: limpiar inputs
+      document.querySelectorAll('input[type="number"]').forEach(i => i.value = 0);
+    } else {
+      const text = await res.text();
+      statusEl.textContent = "Error al enviar pedido: " + text;
+      console.error("Supabase response:", text);
+    }
+  } catch (err) {
+    statusEl.textContent = "Error de conexión: " + err;
+    console.error(err);
+  }
 };
 </script>
 </body>
