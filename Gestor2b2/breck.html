@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Breck</title>
+<style>
+#dias-container > div {
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+#dias-container > div > div:first-child {
+  padding: 14px;
+  font-size: 22px;
+  font-weight: bold;
+  background: #2c3e50;
+  color: #fff;
+  cursor: pointer;
+}
+
+#dias-container > div > div:last-child {
+  display: none;
+  padding: 12px;
+}
+
+#dias-container > div > div:last-child > div {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+input {
+  width: 60px;
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+<h1>Breck</h1>
+<div id="dias-container"></div>
+<button id="enviar">Enviar Pedido</button>
+
+<script>
+const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcGh6ZG9kcGFzc29tZ2d0aGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1ODMxMTIsImV4cCI6MjA4MzE1OTExMn0.mQNeavAOItO-wTgfGVac-z91baYxsa6866HpBOZy3nM";
+const NOMBRE_CAFETERIA = "Breck";
+const PRODUCTOS = ["Croissant","Chocolatín","Hogaza","Foccacia","Brioche","Croissant Almendra","Chocolatín Almendra","Galleta Chispas","Galleta Avena","Galleta Red Velvet"];
+const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const SUCURSAL = ["Bistro","Cafe"]
+const container = document.getElementById('dias-container');
+DIAS.forEach(dia=>{
+  const card=document.createElement('div');
+  const header=document.createElement('div');
+ const hoy = new Date();
+
+// calcular lunes de la semana actual
+const diaSemana = hoy.getDay(); // 0 domingo, 1 lunes...
+const diffLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+const lunes = new Date(hoy);
+lunes.setDate(hoy.getDate() + diffLunes);
+
+// fecha fija según el índice del array DIAS
+const fechaDia = new Date(lunes);
+fechaDia.setDate(lunes.getDate() + DIAS.indexOf(dia));
+
+const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
+header.textContent = fechaDia.toLocaleDateString('es-ES', opciones);
+  header.onclick = () => {
+  list.style.display = list.style.display === 'none' ? 'block' : 'none';
+  };
+  const list=document.createElement('div');
+  PRODUCTOS.forEach(prod=>{
+    const item=document.createElement('div');
+    const span=document.createElement('span'); span.textContent=prod;
+    const inp=document.createElement('input'); inp.type='number'; inp.min=0; inp.value=0;
+    inp.dataset.producto=prod; inp.dataset.dia=dia;
+    item.appendChild(span); item.appendChild(inp);
+    list.appendChild(item);
+  });
+  card.appendChild(header); card.appendChild(list);
+  container.appendChild(card);
+});
+
+document.getElementById('enviar').onclick=async()=>{
+  const pedidoDias={};
+  document.querySelectorAll('input').forEach(inp=>{
+    const val=parseInt(inp.value)||0;
+    if(val>0){
+      if(!pedidoDias[inp.dataset.dia]) pedidoDias[inp.dataset.dia]=[];
+      pedidoDias[inp.dataset.dia].push({producto:inp.dataset.producto,cantidad:val});
+    }
+  });
+  if(Object.keys(pedidoDias).length===0){ alert("No hay cantidades"); return; }
+
+  const pedido={
+    cafeteria:NOMBRE_CAFETERIA,
+    fecha:new Date().toISOString(),
+    dias:pedidoDias,
+    imagenData:"", // opcional si no quieres capturas
+    imagenArchivo:`pedido_${Date.now()}.png`
+  };
+
+  try {
+    const res = await fetch("https://pqphzdodpassomggthid.supabase.co/rest/v1/pedidos", {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "apikey":API_KEY,
+        "Authorization":`Bearer ${API_KEY}`
+      },
+      body:JSON.stringify(pedido)
+    });
+    if(res.ok){ alert("Pedido enviado correctamente"); }
+    else { alert("Error al enviar pedido: "+await res.text()); }
+  } catch(err){ alert("Error de conexión: "+err); }
+};
+</script>
+</body>
+</html>
