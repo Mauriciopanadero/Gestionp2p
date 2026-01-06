@@ -61,6 +61,11 @@ button {
 .modal-content h3 { margin-top:15px; color:#2c3e50; }
 .modal-content ul { list-style:none; padding:0; }
 .modal-content li { padding:5px 0; border-bottom:1px solid #eee; }
+.debug { font-family:monospace; font-size:12px; color:#333; margin-top:12px; white-space:pre-wrap; max-height:120px; overflow:auto; background:#fff; padding:8px; border-radius:8px; border:1px solid #eee; }
+@media (max-width:720px){
+  .days { grid-template-columns: 1fr; height:auto; }
+  .day-card { font-size:20px; padding:18px; min-height:72px; }
+}
 </style>
 </head>
 <body>
@@ -79,6 +84,8 @@ button {
   </div>
 </div>
 
+<div id="debug-log" class="debug" style="display:none;"></div>
+
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
@@ -92,6 +99,7 @@ const modalBody = document.getElementById("modal-body");
 const closeBtn = document.getElementById("close");
 const prevBtn = document.getElementById("prev");
 const nextBtn = document.getElementById("next");
+const debugLog = document.getElementById("debug-log");
 
 closeBtn.onclick = () => modal.style.display = "none";
 window.onclick = e => { if (e.target === modal) modal.style.display = "none"; };
@@ -104,79 +112,134 @@ function formatoDia(fecha){
 
 // Mapa nombre de cafetería -> archivo (ajusta si los nombres en la BD difieren)
 const archivoCafeteria = {
-  "Breck": "breck.html",
-  "Amin": "amin.html",
-  "Zuzu": "zuzu.html",
-  "Ponke": "ponke.html",
-  "Cafe del Sur": "cafe-del-sur.html"
+  "breck": "breck.html",
+  "amin": "amin.html",
+  "zuzu": "zuzu.html",
+  "ponke": "ponke.html",
+  "cafe del sur": "cafe-del-sur.html"
 };
 
+function logDebug(obj){
+  try {
+    debugLog.style.display = "block";
+    debugLog.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+    console.log(obj);
+  } catch(e){ console.log("debug error", e); }
+}
+
 async function cargarPedidos(){
-  const { data, error } = await supabase.from("pedidos").select("*").order("fecha",{ascending:false});
-  if(error){ console.error(error); return; }
-  container.innerHTML = "";
+  try {
+    const { data, error } = await supabase.from("pedidos").select("*").order("fecha",{ascending:false});
+    if(error){ console.error(error); logDebug("Error al consultar Supabase: " + JSON.stringify(error)); return; }
+    container.innerHTML = "";
 
-  const hoy = new Date();
-  for(let i=0;i<6;i++){
-    const fecha = new Date(hoy);
-    fecha.setDate(hoy.getDate()+i+offset);
-    const diaTexto = formatoDia(fecha);
+    // mostrar datos crudos en debug (oculto por defecto)
+    logDebug(data || []);
 
-    const card = document.createElement("div");
-    card.className = "day-card";
-    card.textContent = diaTexto;
+    const hoy = new Date();
+    for(let i=0;i<6;i++){
+      const fecha = new Date(hoy);
+      fecha.setDate(hoy.getDate()+i+offset);
+      const diaTexto = formatoDia(fecha);
 
-    const pedidosDia = data.filter(p=>{
-      const fechaPedido = new Date(p.fecha);
-      return fechaPedido.toDateString() === fecha.toDateString();
-    });
+      const card = document.createElement("div");
+      card.className = "day-card";
+      card.textContent = diaTexto;
 
-    if(pedidosDia.length>0){ card.classList.add("verde"); }
+      const pedidosDia = (data || []).filter(p=>{
+        try { return new Date(p.fecha).toDateString() === fecha.toDateString(); }
+        catch(e){ return false; }
+      });
 
-    card.onclick = () => {
-      modalBody.innerHTML = "";
-      if(pedidosDia.length === 0){
-        modalBody.innerHTML = "<p>No hay pedidos para este día.</p>";
-      } else {
-        pedidosDia.forEach(p=>{
-          const div = document.createElement("div");
-          div.innerHTML = `<h3>${p.cafeteria}</h3>`;
+      if(pedidosDia.length>0){ card.classList.add("verde"); }
 
-          // Crear enlace a la página de la cafetería dentro de la carpeta Gestor2b2
-          const nombre = (p.cafeteria || "").trim();
-          const archivo = archivoCafeteria[nombre];
-          if(archivo){
-            const abrir = document.createElement("a");
-            abrir.href = `Gestor2b2/${archivo}`; // <-- ruta relativa a la carpeta Gestionp2p en la raíz del repo
-            abrir.target = "_blank";
-            abrir.rel = "noopener";
-            abrir.textContent = "Abrir página de la cafetería";
-            abrir.style.display = "inline-block";
-            abrir.style.margin = "8px 0";
-            div.appendChild(abrir);
-          } else {
-            const nota = document.createElement("p");
-            nota.textContent = "No se encontró página para esta cafetería.";
-            div.appendChild(nota);
-          }
+      card.onclick = () => {
+        modalBody.innerHTML = "";
+        if(pedidosDia.length === 0){
+          modalBody.innerHTML = "<p>No hay pedidos para este día.</p>";
+        } else {
+          pedidosDia.forEach(p=>{
+            // depuración: mostrar estructura de p.dias
+            console.log("Pedido recibido:", p);
+            const div = document.createElement("div");
+            div.innerHTML = `<h3>${p.cafeteria ?? 'Sin nombre'}</h3>`;
 
-          const lista = document.createElement("ul");
-          // Si p.dias es un objeto con arrays, iteramos; ajusta si tu estructura es distinta
-          Object.values(p.dias || {}).forEach(arr=>{
-            arr.forEach(item=>{
+            // Normalizar nombre y buscar archivo
+            const nombreNorm = (p.cafeteria || "").toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+            const archivo = archivoCafeteria[nombreNorm];
+            if(archivo){
+              const abrir = document.createElement("a");
+              abrir.href = `Gestor2b2/${archivo}`;
+              abrir.target = "_blank";
+              abrir.rel = "noopener";
+              abrir.textContent = "Abrir página de la cafetería";
+              abrir.style.display = "inline-block";
+              abrir.style.margin = "8px 0";
+              div.appendChild(abrir);
+            } else {
+              const nota = document.createElement("p");
+              nota.textContent = `No se encontró página para "${p.cafeteria}" (normalizado: "${nombreNorm}")`;
+              nota.style.color = "#a00";
+              div.appendChild(nota);
+            }
+
+            // Manejo defensivo de p.dias
+            const lista = document.createElement("ul");
+            const dias = p.dias || {};
+            const diasObj = Array.isArray(dias) ? { "Sin dia": dias } : dias;
+
+            Object.keys(diasObj).forEach(diaKey => {
+              const valor = diasObj[diaKey];
+
+              // Caso A: valor es array de items
+              if (Array.isArray(valor)) {
+                valor.forEach(item => {
+                  const li = document.createElement("li");
+                  li.textContent = `${diaKey} — ${item.producto ?? '—'} — ${item.cantidad ?? 0}`;
+                  lista.appendChild(li);
+                });
+                return;
+              }
+
+              // Caso B: valor es objeto por sucursales
+              if (valor && typeof valor === "object") {
+                Object.keys(valor).forEach(sucursal => {
+                  const arr = valor[sucursal];
+                  if (Array.isArray(arr)) {
+                    arr.forEach(item => {
+                      const li = document.createElement("li");
+                      li.textContent = `${diaKey} / ${sucursal} — ${item.producto ?? '—'} — ${item.cantidad ?? 0}`;
+                      lista.appendChild(li);
+                    });
+                  } else {
+                    const li = document.createElement("li");
+                    li.textContent = `${diaKey} / ${sucursal} — formato inesperado`;
+                    lista.appendChild(li);
+                    console.warn("Sucursal no es array:", diaKey, sucursal, arr);
+                  }
+                });
+                return;
+              }
+
+              // Caso C: formato inesperado
               const li = document.createElement("li");
-              li.textContent = `${item.producto} — ${item.cantidad}`;
+              li.textContent = `${diaKey} — formato inesperado: ${String(valor)}`;
               lista.appendChild(li);
+              console.warn("Formato inesperado en p.dias:", diaKey, valor);
             });
-          });
-          div.appendChild(lista);
-          modalBody.appendChild(div);
-        });
-      }
-      modal.style.display = "flex";
-    };
 
-    container.appendChild(card);
+            div.appendChild(lista);
+            modalBody.appendChild(div);
+          });
+        }
+        modal.style.display = "flex";
+      };
+
+      container.appendChild(card);
+    }
+  } catch (err) {
+    console.error("Error en cargarPedidos:", err);
+    logDebug("Excepción en cargarPedidos: " + String(err));
   }
 }
 
@@ -187,7 +250,8 @@ cargarPedidos();
 
 supabase.channel("pedidos-changes")
   .on("postgres_changes",{event:"INSERT",schema:"public",table:"pedidos"},payload=>{
-    cargarPedidos();
+    // debounce simple para evitar recargas muy rápidas
+    setTimeout(()=> cargarPedidos(), 300);
   })
   .subscribe();
 </script>
