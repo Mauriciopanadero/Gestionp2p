@@ -5,53 +5,114 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard Pedidos</title>
 <style>
-:root{ --accent:#2c3e50; --ok:#27ae60; --muted:#666; --bg:#f8f8f8; }
+:root{
+  --accent:#2c3e50;
+  --ok:#27ae60;
+  --muted:#666;
+  --bg:#f8f8f8;
+}
 *{box-sizing:border-box}
-body{ font-family:Arial, sans-serif; margin:0; padding:18px; background:var(--bg); color:#222; -webkit-font-smoothing:antialiased; }
-h1{ text-align:center; color:var(--accent); margin-bottom:12px; font-size:22px; }
+body{
+  font-family:Arial, sans-serif;
+  margin:0;
+  padding:20px;
+  background:var(--bg);
+  color:#222;
+  -webkit-font-smoothing:antialiased;
+}
+h1{
+  text-align:center;
+  color:var(--accent);
+  margin-bottom:12px;
+  font-size:24px;
+}
 
-/* Controles */
-.controls{ text-align:center; margin-bottom:12px; }
-button{ padding:10px 14px; margin:0 8px; border-radius:10px; border:none; background:var(--accent); color:#fff; cursor:pointer; font-size:15px; }
+/* Controls */
+.controls{
+  text-align:center;
+  margin-bottom:16px;
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+button{
+  padding:10px 16px;
+  border-radius:10px;
+  border:none;
+  background:var(--accent);
+  color:#fff;
+  cursor:pointer;
+  font-size:15px;
+}
+button[disabled]{ opacity:0.6; cursor:default; }
 
-/* Grid días */
-.days{ display:grid; gap:14px; grid-template-columns: repeat(3,1fr); max-width:1100px; margin:0 auto; }
-.day-card{ background:#fff; border-radius:12px; padding:18px; text-align:center; font-weight:700; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,0.06); transition:transform .12s; }
-.day-card:hover{ transform:translateY(-6px); }
-.day-card.verde{ background:var(--ok); color:#fff; }
+/* Days grid - tarjetas más grandes */
+.days{
+  display:grid;
+  gap:18px;
+  grid-template-columns: repeat(3, 1fr);
+  max-width:1200px;
+  margin:0 auto;
+  align-items:start;
+}
+.day-card{
+  background:#fff;
+  border-radius:14px;
+  padding:28px 18px;
+  text-align:center;
+  font-weight:800;
+  cursor:pointer;
+  box-shadow:0 10px 30px rgba(0,0,0,0.06);
+  transition:transform .12s ease, box-shadow .12s ease;
+  border:1px solid #eee;
+  min-height:120px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  font-size:22px;
+  line-height:1.05;
+}
+.day-card small{ display:block; font-weight:600; font-size:12px; color:var(--muted); margin-top:8px; text-transform:capitalize; }
+.day-card:hover{ transform:translateY(-6px); box-shadow:0 18px 40px rgba(0,0,0,0.08); }
+.day-card.verde{ background:var(--ok); color:#fff; border-color:rgba(0,0,0,0.06); }
 
 /* Modal overlay */
 .modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); align-items:center; justify-content:center; padding:18px; z-index:1000; }
 .modal.open{ display:flex; }
 .modal-content{ background:#fff; border-radius:12px; width:100%; max-width:920px; max-height:88vh; overflow:auto; padding:14px; }
 
-/* Modal 1: cafeterías (tarjetas) */
-.caf-list{ display:flex; gap:16px; flex-wrap:wrap; justify-content:flex-start; padding-top:8px; }
-.caf-card{ background:#fafafa; border-radius:12px; padding:18px; min-width:220px; max-width:320px; box-shadow:0 8px 24px rgba(0,0,0,0.06); cursor:pointer; border:1px solid #eee; display:flex; flex-direction:column; gap:8px; transition:transform .12s ease; }
-.caf-card:hover{ transform:translateY(-6px); }
+/* Cafetería cards inside modal */
+.caf-list{ display:flex; gap:16px; flex-wrap:wrap; padding-top:8px; }
+.caf-card{ background:#fafafa; border-radius:12px; padding:18px; min-width:240px; max-width:340px; box-shadow:0 8px 24px rgba(0,0,0,0.06); cursor:pointer; border:1px solid #eee; display:flex; flex-direction:column; gap:8px; }
 .caf-card h4{ margin:0; font-size:18px; color:var(--accent); }
 .caf-card p{ margin:0; font-size:14px; color:var(--muted); }
 
-/* Modal 2: detalle pedido */
-.detalle { margin-top:8px; }
+/* Detalle pedido */
 .detalle h3{ margin:6px 0; color:var(--accent); font-size:16px; }
 .detalle ul{ list-style:none; padding:0; margin:0; }
 .detalle li{ padding:8px 0; border-bottom:1px solid #f0f0f0; font-size:14px; }
 
-/* Botones de acción dentro del modal */
-.modal-actions{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+/* Modal actions */
+.modal-actions{ display:flex; gap:8px; margin-top:12px; justify-content:flex-end; flex-wrap:wrap; }
 .btn-secondary{ background:#eee; color:#222; padding:8px 12px; border-radius:8px; border:none; cursor:pointer; }
 .btn-primary{ background:var(--accent); color:#fff; padding:8px 12px; border-radius:8px; border:none; cursor:pointer; }
 
 /* Close */
 .close{ float:right; font-size:20px; cursor:pointer; border:none; background:transparent; }
 
-/* Debug (opcional) */
+/* Debug (oculto por defecto) */
 .debug{ font-family:monospace; font-size:12px; background:#fff; padding:8px; border-radius:8px; margin-top:12px; max-height:120px; overflow:auto; border:1px solid #eee; display:none; }
 
 /* Responsive */
-@media (max-width:900px){ .days{ grid-template-columns: repeat(2,1fr); } .caf-card{ min-width:180px; max-width:260px; } }
-@media (max-width:560px){ .days{ grid-template-columns: 1fr; } .caf-card{ min-width:140px; max-width:100%; padding:14px; } .caf-list{ gap:10px; } }
+@media (max-width:1000px){ .days{ grid-template-columns: repeat(2,1fr); } .day-card{ min-height:110px; font-size:20px; padding:22px 14px; } .caf-card{ min-width:200px; } }
+@media (max-width:560px){
+  .days{ grid-template-columns: 1fr; gap:12px; padding:0 8px; }
+  .day-card{ min-height:96px; font-size:18px; padding:18px 12px; border-radius:12px; }
+  .caf-card{ min-width:140px; max-width:100%; padding:14px; }
+  .controls{ gap:8px; padding:0 8px; }
+}
 </style>
 </head>
 <body>
@@ -60,11 +121,12 @@ button{ padding:10px 14px; margin:0 8px; border-radius:10px; border:none; backgr
 <div class="controls">
   <button id="prev">◀ Anterior</button>
   <button id="next">Siguiente ▶</button>
+  <button id="refresh" aria-label="Refrescar pedidos">🔄 Refrescar</button>
 </div>
 
 <div class="days" id="days-container"></div>
 
-<!-- Modal 1: cafeterías del día -->
+<!-- Modal cafeterías -->
 <div id="modal-cafs" class="modal" aria-hidden="true">
   <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-cafs-title">
     <button class="close" id="close-cafs" aria-label="Cerrar">&times;</button>
@@ -74,12 +136,12 @@ button{ padding:10px 14px; margin:0 8px; border-radius:10px; border:none; backgr
   </div>
 </div>
 
-<!-- Modal 2: detalle de un pedido -->
+<!-- Modal detalle pedido -->
 <div id="modal-pedido" class="modal" aria-hidden="true">
   <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-pedido-title">
     <button class="close" id="close-pedido" aria-label="Cerrar">&times;</button>
     <div id="pedido-content"></div>
-    <div class="modal-actions" style="justify-content:flex-end;">
+    <div class="modal-actions">
       <button id="btn-regresar" class="btn-secondary">Regresar</button>
       <button id="btn-cerrar" class="btn-primary">Cerrar</button>
     </div>
@@ -107,21 +169,23 @@ const closePedido = document.getElementById("close-pedido");
 const btnRegresar = document.getElementById("btn-regresar");
 const btnCerrar = document.getElementById("btn-cerrar");
 
+const refreshBtn = document.getElementById("refresh");
 const debugLog = document.getElementById("debug-log");
 
 closeCafs.onclick = () => cerrarModal(modalCafs);
 closePedido.onclick = () => cerrarModal(modalPedido);
 btnCerrar.onclick = () => cerrarModal(modalPedido);
 btnRegresar.onclick = () => {
-  // cerrar detalle y reabrir lista previa sin recargar
   cerrarModal(modalPedido);
   abrirModal(modalCafs);
 };
-
-window.onclick = e => { if (e.target === modalCafs) cerrarModal(modalCafs); if (e.target === modalPedido) cerrarModal(modalPedido); };
+window.onclick = e => {
+  if (e.target === modalCafs) cerrarModal(modalCafs);
+  if (e.target === modalPedido) cerrarModal(modalPedido);
+};
 
 let offset = 0;
-let lastAgrupacion = null; // guarda la agrupación actual para poder regresar
+let lastAgrupacion = null;
 
 /* Normalizar nombre para mapear archivos */
 function normalizar(s){ return s ? s.toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'') : ''; }
@@ -132,11 +196,8 @@ const archivoCafeteria = {
 function formatoDia(fecha){
   return fecha.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"short"});
 }
-
 function abrirModal(modal){ modal.classList.add('open'); modal.setAttribute('aria-hidden','false'); }
 function cerrarModal(modal){ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }
-
-/* Mostrar debug (opcional) */
 function logDebug(obj){ debugLog.style.display = 'none'; debugLog.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj,null,2); }
 
 /* Cargar pedidos y renderizar días */
@@ -145,7 +206,7 @@ async function cargarPedidos(){
     const { data, error } = await supabase.from("pedidos").select("id,cafeteria,fecha,dias").order("fecha",{ascending:false});
     if(error){ console.error(error); logDebug("Error Supabase: "+JSON.stringify(error)); return; }
     const lastData = data || [];
-    logDebug(lastData); // oculto por defecto en CSS
+    logDebug(lastData);
 
     container.innerHTML = "";
     const hoy = new Date();
@@ -156,7 +217,13 @@ async function cargarPedidos(){
 
       const card = document.createElement("div");
       card.className = "day-card";
-      card.textContent = diaTexto;
+      // mostrar día y fecha en dos líneas para mejor lectura
+      const main = document.createElement('div');
+      main.textContent = diaTexto;
+      const sub = document.createElement('small');
+      sub.textContent = new Date(fecha).toLocaleDateString('es-ES');
+      card.appendChild(main);
+      card.appendChild(sub);
 
       const pedidosDia = (lastData || []).filter(p=>{
         try { return new Date(p.fecha).toDateString() === fecha.toDateString(); } catch(e){ return false; }
@@ -187,7 +254,6 @@ function abrirModalCafeterias(pedidosDia, fecha){
     return;
   }
 
-  // Agrupar por cafetería (nombre normalizado)
   const agrup = {};
   pedidosDia.forEach(p => {
     const clave = normalizar(p.cafeteria || 'sin-nombre');
@@ -195,7 +261,6 @@ function abrirModalCafeterias(pedidosDia, fecha){
     agrup[clave].push(p);
   });
 
-  // Guardar agrupación para poder regresar desde detalle
   lastAgrupacion = { agrup, fecha };
 
   Object.keys(agrup).forEach(clave => {
@@ -206,7 +271,7 @@ function abrirModalCafeterias(pedidosDia, fecha){
     card.className = 'caf-card';
     const h = document.createElement('h4'); h.textContent = nombreReal;
     const p = document.createElement('p');
-    // resumen: total de items y sucursales involucradas
+
     let totalItems = 0;
     const sucursales = new Set();
     pedidos.forEach(pp => {
@@ -240,7 +305,7 @@ function abrirModalCafeterias(pedidosDia, fecha){
   abrirModal(modalCafs);
 }
 
-/* Modal 2: mostrar detalle de pedido (uno o varios registros) */
+/* Modal 2: detalle de pedido */
 function abrirModalPedido(nombre, pedidosArray){
   pedidoContent.innerHTML = "";
   const title = document.createElement('h2');
@@ -248,7 +313,6 @@ function abrirModalPedido(nombre, pedidosArray){
   title.textContent = `Pedido — ${nombre}`;
   pedidoContent.appendChild(title);
 
-  // Si hay varios registros (por ejemplo varios inserts), los mostramos uno a uno
   pedidosArray.forEach((p, idx) => {
     const cont = document.createElement('div');
     cont.className = 'detalle';
@@ -256,7 +320,6 @@ function abrirModalPedido(nombre, pedidosArray){
     sub.textContent = `Registro ${idx+1} — ${new Date(p.fecha).toLocaleString()}`;
     cont.appendChild(sub);
 
-    // Enlace a la página de la cafetería si existe
     const clave = normalizar(p.cafeteria);
     const archivo = archivoCafeteria[clave];
     if(archivo){
@@ -270,7 +333,6 @@ function abrirModalPedido(nombre, pedidosArray){
       cont.appendChild(a);
     }
 
-    // Renderizar p.dias con manejo defensivo
     const dias = p.dias || {};
     const diasObj = Array.isArray(dias) ? { "Sin dia": dias } : dias;
 
@@ -281,7 +343,6 @@ function abrirModalPedido(nombre, pedidosArray){
       diaTitle.style.margin = '8px 0 6px';
       cont.appendChild(diaTitle);
 
-      // Si valor es array de items
       if(Array.isArray(valor)){
         const ul = document.createElement('ul');
         valor.forEach(it => {
@@ -290,9 +351,7 @@ function abrirModalPedido(nombre, pedidosArray){
           ul.appendChild(li);
         });
         cont.appendChild(ul);
-      }
-      // Si valor es objeto por sucursales
-      else if(valor && typeof valor === 'object'){
+      } else if(valor && typeof valor === 'object'){
         Object.keys(valor).forEach(suc => {
           const sucTitle = document.createElement('h5');
           sucTitle.textContent = suc;
@@ -328,7 +387,6 @@ function abrirModalPedido(nombre, pedidosArray){
     pedidoContent.appendChild(cont);
   });
 
-  // cerrar modal cafeterías y abrir modal pedido
   cerrarModal(modalCafs);
   abrirModal(modalPedido);
 }
@@ -336,6 +394,20 @@ function abrirModalPedido(nombre, pedidosArray){
 /* Navegación */
 document.getElementById('prev').onclick = () => { offset -= 6; cargarPedidos(); };
 document.getElementById('next').onclick = () => { offset += 6; cargarPedidos(); };
+
+/* Refrescar (recarga suave) */
+refreshBtn.addEventListener('click', () => {
+  refreshBtn.disabled = true;
+  const original = refreshBtn.textContent;
+  refreshBtn.textContent = 'Actualizando…';
+  Promise.resolve().then(() => cargarPedidos())
+    .finally(() => {
+      setTimeout(() => {
+        refreshBtn.textContent = original;
+        refreshBtn.disabled = false;
+      }, 600);
+    });
+});
 
 /* Realtime (debounce simple) */
 supabase.channel("pedidos-changes")
