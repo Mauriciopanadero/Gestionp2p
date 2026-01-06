@@ -1,63 +1,46 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Breck</title>
 <style>
-  body { font-family: Arial, sans-serif; padding:20px; background:#f5f5f5; }
-  h1 { color:#2c3e50; margin-bottom:12px; }
-  #dias-container > div {
-    border: 1px solid #ccc;
-    border-radius: 10px;
-    margin-bottom: 12px;
-    background: #fff;
-    overflow: hidden;
-  }
-  #dias-container > div > div:first-child {
-    padding: 14px;
-    font-size: 18px;
-    font-weight: bold;
-    background: #2c3e50;
-    color: #fff;
-    cursor: pointer;
-  }
-  #dias-container > div > div:last-child {
-    display: none;
-    padding: 12px;
-  }
-  .producto-row {
-    display:flex;
-    gap:12px;
-    align-items:center;
-    justify-content:space-between;
-    margin-bottom:8px;
-  }
-  .producto-row span { flex:1; }
-  .suc-inputs { display:flex; gap:8px; align-items:center; }
-  .suc-inputs label { font-size:13px; margin-right:4px; }
-  input[type="number"] { width:70px; padding:6px; border-radius:6px; border:1px solid #ccc; }
-  #enviar {
-    margin-top:12px;
-    padding:10px 16px;
-    background:#27ae60;
-    color:#fff;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
-    font-size:16px;
-  }
-  #status { margin-top:10px; font-size:14px; color:#333; }
-  .small { font-size:13px; color:#666; margin-top:6px; }
+:root{ --bg:#f5f5f5; --card:#fff; --accent:#2c3e50; --ok:#27ae60; --muted:#666; }
+*{box-sizing:border-box}
+body{ font-family:Arial, sans-serif; margin:0; padding:16px; background:var(--bg); color:#222; }
+h1{ color:var(--accent); margin:0 0 12px; font-size:20px; text-align:center; }
+.container{ max-width:980px; margin:0 auto; }
+.card{ background:var(--card); border-radius:10px; padding:12px; margin-bottom:12px; border:1px solid #eaeaea; box-shadow:0 6px 18px rgba(0,0,0,0.04); }
+.header{ font-weight:700; background:var(--accent); color:#fff; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+.product-row{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.product-row span{ flex:1; font-size:15px; }
+.suc-inputs{ display:flex; gap:8px; align-items:center; }
+.suc-col{ display:flex; flex-direction:column; align-items:flex-end; min-width:84px; }
+.suc-col label{ font-size:12px; color:var(--muted); margin-bottom:4px; }
+input[type="number"]{ width:72px; padding:8px; border-radius:8px; border:1px solid #ccc; font-size:15px; text-align:right; }
+#enviar{ width:100%; padding:12px; border-radius:10px; border:none; background:var(--ok); color:#fff; font-size:16px; cursor:pointer; margin-top:8px; }
+#status{ margin-top:8px; font-size:14px; text-align:center; color:#333; }
+
+/* Responsive */
+@media (max-width:720px){
+  .product-row{ flex-direction:column; align-items:flex-start; gap:8px; }
+  .suc-inputs{ width:100%; justify-content:flex-start; gap:10px; }
+  .suc-col{ align-items:flex-start; min-width:0; }
+  input[type="number"]{ width:100%; max-width:160px; text-align:left; }
+}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
-<h1>Breck</h1>
-<div id="dias-container"></div>
-<button id="enviar">Enviar Pedido</button>
-<div id="status" aria-live="polite"></div>
-<div class="small">Sucursales: <strong>Bistro</strong> y <strong>Cafe</strong></div>
+<div class="container">
+  <h1>Breck</h1>
+  <div class="card">
+    <div class="header">Semana actual — pedidos por día</div>
+    <div id="dias-container"></div>
+    <button id="enviar">Enviar Pedido</button>
+    <div id="status" aria-live="polite"></div>
+    <div style="margin-top:8px;font-size:13px;color:var(--muted)">Sucursales: <strong>Bistro</strong> y <strong>Cafe</strong></div>
+  </div>
+</div>
 
 <script>
 /* CONFIG */
@@ -69,33 +52,29 @@ const SUCURSALES = ["Bistro","Cafe"];
 const container = document.getElementById('dias-container');
 const statusEl = document.getElementById('status');
 
-/* Construir tarjetas por día con inputs por sucursal */
+/* Construir UI */
 (function buildUI(){
   const hoy = new Date();
-
-  // calcular lunes de la semana actual
-  const diaSemana = hoy.getDay(); // 0 domingo, 1 lunes...
+  const diaSemana = hoy.getDay();
   const diffLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
-  const lunes = new Date(hoy);
-  lunes.setDate(hoy.getDate() + diffLunes);
+  const lunes = new Date(hoy); lunes.setDate(hoy.getDate() + diffLunes);
 
   DIAS.forEach((dia, idx) => {
     const card = document.createElement('div');
+    card.className = 'card';
 
     const header = document.createElement('div');
-    const fechaDia = new Date(lunes);
-    fechaDia.setDate(lunes.getDate() + idx);
+    header.className = 'header';
+    const fechaDia = new Date(lunes); fechaDia.setDate(lunes.getDate() + idx);
     const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
     header.textContent = `${dia} — ${fechaDia.toLocaleDateString('es-ES', opciones)}`;
-    header.setAttribute('role','button');
-    header.style.userSelect = 'none';
 
     const list = document.createElement('div');
+    list.style.marginTop = '8px';
 
-    // por cada producto, crear fila con inputs para cada sucursal
     PRODUCTOS.forEach(prod => {
       const row = document.createElement('div');
-      row.className = 'producto-row';
+      row.className = 'product-row';
 
       const span = document.createElement('span');
       span.textContent = prod;
@@ -105,14 +84,10 @@ const statusEl = document.getElementById('status');
 
       SUCURSALES.forEach(suc => {
         const wrapper = document.createElement('div');
-        wrapper.style.display = 'flex';
-        wrapper.style.flexDirection = 'column';
-        wrapper.style.alignItems = 'flex-end';
+        wrapper.className = 'suc-col';
 
         const label = document.createElement('label');
         label.textContent = suc;
-        label.style.fontSize = '12px';
-        label.style.color = '#444';
 
         const inp = document.createElement('input');
         inp.type = 'number';
@@ -121,6 +96,8 @@ const statusEl = document.getElementById('status');
         inp.dataset.producto = prod;
         inp.dataset.dia = dia;
         inp.dataset.sucursal = suc;
+        inp.setAttribute('inputmode','numeric');
+        inp.setAttribute('pattern','[0-9]*');
 
         wrapper.appendChild(label);
         wrapper.appendChild(inp);
@@ -132,57 +109,38 @@ const statusEl = document.getElementById('status');
       list.appendChild(row);
     });
 
-    header.onclick = () => {
-      list.style.display = list.style.display === 'none' ? 'block' : 'none';
-    };
-
-    // por defecto oculto
-    list.style.display = 'none';
-
     card.appendChild(header);
     card.appendChild(list);
     container.appendChild(card);
   });
 })();
 
-/* Construir objeto pedido y enviarlo */
+/* Enviar pedido */
 document.getElementById('enviar').onclick = async () => {
   statusEl.textContent = '';
-  // Estructura: dias = { "Lunes": { "Bistro":[{producto,cantidad}], "Cafe":[...] }, ... }
   const pedidoDias = {};
 
-  // recorrer todos los inputs
-  const inputs = document.querySelectorAll('input[type="number"]');
-  inputs.forEach(inp => {
+  document.querySelectorAll('input[type="number"]').forEach(inp=>{
     const dia = inp.dataset.dia;
     const suc = inp.dataset.sucursal;
     const prod = inp.dataset.producto;
     const cant = Number(inp.value) || 0;
-    if (cant <= 0) return; // ignorar ceros
-
+    if (cant <= 0) return;
     if (!pedidoDias[dia]) pedidoDias[dia] = {};
     if (!pedidoDias[dia][suc]) pedidoDias[dia][suc] = [];
     pedidoDias[dia][suc].push({ producto: prod, cantidad: cant });
   });
 
-  if (Object.keys(pedidoDias).length === 0) {
-    alert("No hay cantidades para enviar.");
-    return;
-  }
-
-  // Opcional: generar captura de la tabla (comentado por defecto)
-  // const canvas = await html2canvas(container);
-  // const imagenData = canvas.toDataURL("image/png");
+  if (Object.keys(pedidoDias).length === 0) { alert("No hay cantidades para enviar."); return; }
 
   const pedido = {
     cafeteria: NOMBRE_CAFETERIA,
     fecha: new Date().toISOString(),
     dias: pedidoDias,
-    imagenData: "", // si quieres la captura, pon imagenData
+    imagenData: "",
     imagenArchivo: `pedido_${Date.now()}.png`
   };
 
-  // Enviar a Supabase REST
   try {
     statusEl.textContent = "Enviando pedido...";
     const res = await fetch("https://pqphzdodpassomggthid.supabase.co/rest/v1/pedidos", {
@@ -197,7 +155,6 @@ document.getElementById('enviar').onclick = async () => {
 
     if (res.ok) {
       statusEl.textContent = "Pedido enviado correctamente.";
-      // opcional: limpiar inputs
       document.querySelectorAll('input[type="number"]').forEach(i => i.value = 0);
     } else {
       const text = await res.text();
