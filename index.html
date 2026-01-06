@@ -93,52 +93,79 @@ const closeBtn = document.getElementById("close");
 const prevBtn = document.getElementById("prev");
 const nextBtn = document.getElementById("next");
 
-closeBtn.onclick = ()=> modal.style.display="none";
-window.onclick = e=>{ if(e.target===modal) modal.style.display="none"; };
+closeBtn.onclick = () => modal.style.display = "none";
+window.onclick = e => { if (e.target === modal) modal.style.display = "none"; };
 
-let offset = 0; // desplazamiento de días
+let offset = 0;
 
 function formatoDia(fecha){
   return fecha.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"short"});
 }
 
+// Mapa nombre de cafetería -> archivo (ajusta si los nombres en la BD difieren)
+const archivoCafeteria = {
+  "Breck": "breck.html",
+  "Amin": "amin.html",
+  "Zuzu": "zuzu.html",
+  "Ponke": "ponke.html",
+  "Cafe del Sur": "cafe-del-sur.html"
+};
+
 async function cargarPedidos(){
   const { data, error } = await supabase.from("pedidos").select("*").order("fecha",{ascending:false});
   if(error){ console.error(error); return; }
-  container.innerHTML="";
-  
+  container.innerHTML = "";
+
   const hoy = new Date();
   for(let i=0;i<6;i++){
     const fecha = new Date(hoy);
     fecha.setDate(hoy.getDate()+i+offset);
     const diaTexto = formatoDia(fecha);
 
-    // Crear tarjeta SIEMPRE
-    const card=document.createElement("div");
-    card.className="day-card";
-    card.textContent=diaTexto;
+    const card = document.createElement("div");
+    card.className = "day-card";
+    card.textContent = diaTexto;
 
-    // Buscar pedidos de esa fecha
-    const pedidosDia=data.filter(p=>{
-      const fechaPedido=new Date(p.fecha);
-      return fechaPedido.toDateString()===fecha.toDateString();
+    const pedidosDia = data.filter(p=>{
+      const fechaPedido = new Date(p.fecha);
+      return fechaPedido.toDateString() === fecha.toDateString();
     });
 
     if(pedidosDia.length>0){ card.classList.add("verde"); }
 
-    card.onclick=()=>{
-      modalBody.innerHTML="";
-      if(pedidosDia.length===0){
-        modalBody.innerHTML="<p>No hay pedidos para este día.</p>";
+    card.onclick = () => {
+      modalBody.innerHTML = "";
+      if(pedidosDia.length === 0){
+        modalBody.innerHTML = "<p>No hay pedidos para este día.</p>";
       } else {
         pedidosDia.forEach(p=>{
-          const div=document.createElement("div");
-          div.innerHTML=`<h3>${p.cafeteria}</h3>`;
-          const lista=document.createElement("ul");
-          Object.values(p.dias).forEach(arr=>{
+          const div = document.createElement("div");
+          div.innerHTML = `<h3>${p.cafeteria}</h3>`;
+
+          // Crear enlace a la página de la cafetería dentro de la carpeta Gestor2b2
+          const nombre = (p.cafeteria || "").trim();
+          const archivo = archivoCafeteria[nombre];
+          if(archivo){
+            const abrir = document.createElement("a");
+            abrir.href = `Gestot2b2/${archivo}`; // <-- ruta relativa a la carpeta Gestionp2p en la raíz del repo
+            abrir.target = "_blank";
+            abrir.rel = "noopener";
+            abrir.textContent = "Abrir página de la cafetería";
+            abrir.style.display = "inline-block";
+            abrir.style.margin = "8px 0";
+            div.appendChild(abrir);
+          } else {
+            const nota = document.createElement("p");
+            nota.textContent = "No se encontró página para esta cafetería.";
+            div.appendChild(nota);
+          }
+
+          const lista = document.createElement("ul");
+          // Si p.dias es un objeto con arrays, iteramos; ajusta si tu estructura es distinta
+          Object.values(p.dias || {}).forEach(arr=>{
             arr.forEach(item=>{
-              const li=document.createElement("li");
-              li.textContent=`${item.producto} — ${item.cantidad}`;
+              const li = document.createElement("li");
+              li.textContent = `${item.producto} — ${item.cantidad}`;
               lista.appendChild(li);
             });
           });
@@ -146,22 +173,24 @@ async function cargarPedidos(){
           modalBody.appendChild(div);
         });
       }
-      modal.style.display="flex";
+      modal.style.display = "flex";
     };
 
     container.appendChild(card);
   }
 }
 
-prevBtn.onclick=()=>{ offset-=6; cargarPedidos(); };
-nextBtn.onclick=()=>{ offset+=6; cargarPedidos(); };
+prevBtn.onclick = () => { offset -= 6; cargarPedidos(); };
+nextBtn.onclick = () => { offset += 6; cargarPedidos(); };
 
 cargarPedidos();
+
 supabase.channel("pedidos-changes")
   .on("postgres_changes",{event:"INSERT",schema:"public",table:"pedidos"},payload=>{
     cargarPedidos();
   })
   .subscribe();
 </script>
+
 </body>
 </html>
