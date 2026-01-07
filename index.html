@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Dashboard Pedidos</title>
 <style>
 :root{
@@ -128,7 +128,6 @@ button[disabled]{ opacity:0.6; cursor:default; }
   <button id="prev">◀ Anterior</button>
   <button id="next">Siguiente ▶</button>
   <button id="refresh" aria-label="Refrescar pedidos">🔄 Refrescar</button>
-  <!-- Nuevo botón junto a Refrescar -->
   <button id="open-all-urls" aria-label="Ver todas las URLs">🌐 Ver todas las URLs</button>
 </div>
 
@@ -140,7 +139,6 @@ button[disabled]{ opacity:0.6; cursor:default; }
     <button class="close" id="close-cafs" aria-label="Cerrar">&times;</button>
     <h2 id="modal-cafs-title">Cafeterías con pedidos</h2>
 
-    <!-- botón para abrir modal de URLs (local al día) -->
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
       <button id="btn-ver-urls" class="btn-secondary">Ver URLs</button>
     </div>
@@ -181,7 +179,7 @@ button[disabled]{ opacity:0.6; cursor:default; }
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 const SUPABASE_URL = "https://pqphzdodpassomggthid.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcGh6ZG9kcGFzc29tZ2d0aGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1ODMxMTIsImV4cCI6MjA4MzE1OTExMn0.mQNeavAOItO-wTgfGVac-z91baYxsa6866HpBOZy3nM";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcGh6ZG9vZHBhc3NvbWdndGhpaWQiLCJpYXQiOjE3Njc1ODMxMTIsImV4cCI6MjA4MzE1OTExMn0.mQNeavAOItO-wTgfGVac-z91baYxsa6866HpBOZy3nM";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* Elementos */
@@ -230,7 +228,7 @@ let lastAgrupacion = null; // guarda la agrupación actual para poder regresar
 /* Normalizar nombre para mapear archivos */
 function normalizar(s){ return s ? s.toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'') : ''; }
 
-/* Mapa cargado desde la base: nombre_normalizado -> archivo/url */
+/* Mapa cargado desde la base: nombre_normalizado -> { archivo, nameOriginal } */
 let archivoCafeteria = {}; // se llenará desde la tabla 'cafeterias'
 
 function formatoDia(fecha){
@@ -240,15 +238,27 @@ function abrirModal(modal){ modal.classList.add('open'); modal.setAttribute('ari
 function cerrarModal(modal){ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }
 function logDebug(obj){ debugLog.style.display = 'none'; debugLog.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj,null,2); }
 
+/* Comparar fecha del pedido con una fecha objetivo usando UTC (evita desfases por zona horaria) */
+function mismaFechaUTC(fechaStr, fechaObj){
+  const d = new Date(fechaStr);
+  return d.getUTCFullYear() === fechaObj.getUTCFullYear()
+      && d.getUTCMonth() === fechaObj.getUTCMonth()
+      && d.getUTCDate() === fechaObj.getUTCDate();
+}
+
 /* Cargar tabla de cafeterías desde Supabase y construir el mapa */
 async function cargarCafeterias(){
   try {
+    // Ajusta el nombre de la tabla/campos si tu esquema es distinto
     const { data, error } = await supabase.from('cafeterias').select('id,name,archivo');
     if(error){ console.warn('No se pudo cargar cafeterías:', error); return; }
     archivoCafeteria = {};
     (data || []).forEach(row => {
       const clave = normalizar(row.name || row.id || '');
-      archivoCafeteria[clave] = row.archivo || null;
+      archivoCafeteria[clave] = {
+        archivo: row.archivo || null,
+        name: row.name || clave
+      };
     });
     logDebug({ cafeterias_loaded: Object.keys(archivoCafeteria).length });
   } catch (err) {
@@ -282,8 +292,9 @@ async function cargarPedidos(){
       card.appendChild(main);
       card.appendChild(sub);
 
-      const pedidosDia = (lastData || []).filter(p=>{
-        try { return new Date(p.fecha).toDateString() === fecha.toDateString(); } catch(e){ return false; }
+      // filtro seguro usando nombres claros y comparación UTC
+      const pedidosDia = (lastData || []).filter(pedido => {
+        try { return mismaFechaUTC(pedido.fecha, fecha); } catch(e){ return false; }
       });
 
       if(pedidosDia.length>0) card.classList.add("verde");
@@ -313,10 +324,10 @@ function abrirModalCafeterias(pedidosDia, fecha){
 
   // Agrupar por cafetería (nombre normalizado)
   const agrup = {};
-  pedidosDia.forEach(p => {
-    const clave = normalizar(p.cafeteria || 'sin-nombre');
+  pedidosDia.forEach(pedido => {
+    const clave = normalizar(pedido.cafeteria || 'sin-nombre');
     if(!agrup[clave]) agrup[clave] = [];
-    agrup[clave].push(p);
+    agrup[clave].push(pedido);
   });
 
   // Guardar agrupación para poder regresar desde detalle y para modal URLs
@@ -324,7 +335,7 @@ function abrirModalCafeterias(pedidosDia, fecha){
 
   Object.keys(agrup).forEach(clave => {
     const pedidos = agrup[clave];
-    const nombreReal = pedidos[0].cafeteria || clave;
+    const nombreReal = pedidos[0].cafeteria || (archivoCafeteria[clave] && archivoCafeteria[clave].name) || clave;
 
     const card = document.createElement('div');
     card.className = 'caf-card';
@@ -380,8 +391,9 @@ btnVerUrls.addEventListener('click', () => {
 
   Object.keys(agrup).forEach(clave => {
     const pedidos = agrup[clave];
-    const nombreReal = pedidos[0].cafeteria || clave;
-    const archivo = archivoCafeteria[clave] || null;
+    const nombreReal = pedidos[0].cafeteria || (archivoCafeteria[clave] && archivoCafeteria[clave].name) || clave;
+    const meta = archivoCafeteria[clave] || { archivo: null, name: nombreReal };
+    const archivo = meta.archivo || null;
 
     const li = document.createElement('li');
     const span = document.createElement('span');
@@ -394,7 +406,7 @@ btnVerUrls.addEventListener('click', () => {
 
     if(archivo){
       const a = document.createElement('a');
-      a.href = archivo.startsWith('http') ? archivo : `Gestor2bw/${archivo}`;
+      a.href = archivo.startsWith('http') ? archivo : `https://mauriciopanadero.github.io/Gestionp2p/Gestor2b2/${archivo}`;
       a.target = '_blank';
       a.rel = 'noopener';
       a.className = 'url-link';
@@ -424,7 +436,6 @@ openAllUrlsBtn.addEventListener('click', async () => {
   // Asegurarse de tener el mapa actualizado
   await cargarCafeterias();
 
-  // Si no hay cafeterías cargadas
   const claves = Object.keys(archivoCafeteria || {});
   if(claves.length === 0){
     urlsNote.textContent = "No se encontraron cafeterías registradas.";
@@ -432,10 +443,11 @@ openAllUrlsBtn.addEventListener('click', async () => {
     return;
   }
 
-  // Mostrar todas las cafeterías ordenadas por nombre
-  claves.sort().forEach(clave => {
-    const archivo = archivoCafeteria[clave];
-    const displayName = clave; // clave ya normalizada; si quieres el nombre original, necesitaríamos traerlo en cargarCafeterias
+  // Mostrar todas las cafeterías ordenadas por nombre original
+  const lista = Object.values(archivoCafeteria).slice().sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+  lista.forEach(meta => {
+    const displayName = meta.name || '';
+    const archivo = meta.archivo || null;
     const li = document.createElement('li');
     const span = document.createElement('span');
     span.textContent = displayName;
@@ -447,7 +459,7 @@ openAllUrlsBtn.addEventListener('click', async () => {
 
     if(archivo){
       const a = document.createElement('a');
-      a.href = archivo.startsWith('http') ? archivo : `Gestor2b2/${archivo}`;
+      a.href = archivo.startsWith('http') ? archivo : `https://mauriciopanadero.github.io/Gestionp2p/Gestor2b2/${archivo}`;
       a.target = '_blank';
       a.rel = 'noopener';
       a.className = 'url-link';
@@ -477,14 +489,14 @@ function abrirModalPedido(nombre, pedidosArray){
   title.textContent = `Pedido — ${nombre}`;
   pedidoContent.appendChild(title);
 
-  pedidosArray.forEach((p, idx) => {
+  pedidosArray.forEach((pedido, idx) => {
     const cont = document.createElement('div');
     cont.className = 'detalle';
     const sub = document.createElement('h3');
-    sub.textContent = `Registro ${idx+1} — ${new Date(p.fecha).toLocaleString()}`;
+    sub.textContent = `Registro ${idx+1} — ${new Date(pedido.fecha).toLocaleString()}`;
     cont.appendChild(sub);
 
-    const dias = p.dias || {};
+    const dias = pedido.dias || {};
     const diasObj = Array.isArray(dias) ? { "Sin dia": dias } : dias;
 
     Object.keys(diasObj).forEach(diaKey => {
