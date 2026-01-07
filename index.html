@@ -182,6 +182,9 @@ const SUPABASE_URL = "https://pqphzdodpassomggthid.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcGh6ZG9vZHBhc3NvbWdndGhpaWQiLCJpYXQiOjE3Njc1ODMxMTIsImV4cCI6MjA4MzE1OTExMn0.mQNeavAOItO-wTgfGVac-z91baYxsa6866HpBOZy3nM";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Base URL para las páginas de cafeterías en GitHub Pages (actualizado a Gestor2b2)
+const CAF_BASE_URL = "https://mauriciopanadero.github.io/Gestionp2p/Gestor2b2/";
+
 /* Elementos */
 const container = document.getElementById("days-container");
 const modalCafs = document.getElementById("modal-cafs");
@@ -406,7 +409,7 @@ btnVerUrls.addEventListener('click', () => {
 
     if(archivo){
       const a = document.createElement('a');
-      a.href = archivo.startsWith('http') ? archivo : `https://mauriciopanadero.github.io/Gestionp2p/Gestor2b2/${archivo}`;
+      a.href = archivo.startsWith('http') ? archivo : (CAF_BASE_URL + archivo);
       a.target = '_blank';
       a.rel = 'noopener';
       a.className = 'url-link';
@@ -459,7 +462,7 @@ openAllUrlsBtn.addEventListener('click', async () => {
 
     if(archivo){
       const a = document.createElement('a');
-      a.href = archivo.startsWith('http') ? archivo : `https://mauriciopanadero.github.io/Gestionp2p/Gestor2b2/${archivo}`;
+      a.href = archivo.startsWith('http') ? archivo : (CAF_BASE_URL + archivo);
       a.target = '_blank';
       a.rel = 'noopener';
       a.className = 'url-link';
@@ -572,12 +575,36 @@ refreshBtn.addEventListener('click', () => {
     });
 });
 
-/* Realtime (debounce simple) */
-supabase.channel("pedidos-changes")
-  .on("postgres_changes",{event:"INSERT",schema:"public",table:"pedidos"},payload=>{
-    setTimeout(()=> cargarPedidos(), 300);
-  })
-  .subscribe();
+/* Realtime + fallback polling */
+let pollingHandle = null;
+let realtimeConnected = false;
+
+function startPolling(interval = 5000){
+  if(pollingHandle) return;
+  pollingHandle = setInterval(() => cargarPedidos(), interval);
+  console.warn("Polling activado como fallback");
+}
+function stopPolling(){ if(pollingHandle){ clearInterval(pollingHandle); pollingHandle = null; console.warn("Polling detenido"); } }
+
+try {
+  const channel = supabase.channel("pedidos-changes")
+    .on("postgres_changes", { event:"INSERT", schema:"public", table:"pedidos" }, payload => {
+      realtimeConnected = true;
+      stopPolling();
+      cargarPedidos();
+    })
+    .subscribe();
+
+  // fallback si no se confirma conexión en 2s
+  setTimeout(() => { if(!realtimeConnected) startPolling(5000); }, 2000);
+
+  window.addEventListener('error', e => {
+    if(e && e.message && e.message.includes('WebSocket')) startPolling(5000);
+  });
+} catch (err) {
+  console.warn("No se pudo crear canal realtime, usando polling", err);
+  startPolling(5000);
+}
 
 /* Inicializar */
 cargarPedidos();
