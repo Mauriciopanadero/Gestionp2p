@@ -608,6 +608,9 @@ try {
 
 /* Inicializar */
 cargarPedidos();
+  // al final de tu script, después de declarar cargarPedidos()
+window.cargarPedidos = cargarPedidos;
+
 </script>
 </body>
 </html>
